@@ -216,5 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+<<<<<<< Updated upstream
 /config.yaml
 /.idea/
+=======
+
+# morning-coffee: local secrets & settings (never commit)
+config.yaml
+config.yml
+>>>>>>> Stashed changes

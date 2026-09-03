@@ -1,0 +1,43 @@
+# morning-coffee configuration.
+#
+# Copy this file to `config.yaml` (which is gitignored) and fill in your values:
+#     cp config.example.yaml config.yaml
+#
+# Any value can be overridden by an environment variable named
+# MC_<SECTION>_<KEY> (uppercased). The environment always wins over the YAML
+# value, so you can keep structured settings here and inject secrets from your
+# shell / .envrc. Examples:
+#     export MC_TTRSS_PASSWORD=hunter2
+#     export MC_MASTODON_ACCESS_TOKEN=abc123
+# Sections map to the top-level keys below; for integrations the section is the
+# integration name (e.g. MC_TTRSS_*, MC_MASTODON_*, MC_WEATHER_*, MC_LOCATION_*).
+
+location:
+  postal_code: "94103"
+  country: "us"          # ISO alpha-2 country code, for postal-code geocoding
+  units: "fahrenheit"    # or "celsius"
+
+integrations:
+  ttrss:
+    enabled: true
+    url: "https://rss.example.com/tt-rss/"   # "/api/" is appended automatically
+    username: "me"
+    password: ""          # secret — better set via MC_TTRSS_PASSWORD
+    feed_id: -3           # -3 = Fresh (top of the day); -4 = All articles
+    limit: 25
+    verify_tls: true      # set false for self-signed instances
+
+  mastodon:
+    enabled: true
+    api_base_url: "https://mastodon.social"
+    access_token: ""      # secret — better set via MC_MASTODON_ACCESS_TOKEN
+    types:                # notification kinds to show
+      - "mention"
+      - "favourite"
+      - "reblog"
+      - "follow"
+    limit: 25
+
+  weather:
+    enabled: true
+    forecast_days: 7
