@@ -30,13 +30,24 @@ integrations:
   mastodon:
     enabled: true
     api_base_url: "https://mastodon.social"
+    # Token scopes: read:notifications + read:statuses to read the feeds; add
+    # write:statuses to post from the Compose tab. Trending needs no scope.
     access_token: ""      # secret — better set via MC_MASTODON_ACCESS_TOKEN
-    types:                # notification kinds to show
+    notification_types:   # notification kinds to show
       - "mention"
       - "favourite"
       - "reblog"
       - "follow"
-    limit: 25
+    notifications_limit: 25
+    home_limit: 25
+    trending_limit: 20
+    default_visibility: "public"   # public | unlisted | private | direct
+    max_characters: 500            # compose counter limit (instance default is 500)
+    # Toggle which tabs appear in the Mastodon panel:
+    show_notifications: true
+    show_home: true
+    show_trending: true
+    show_compose: true
 
   weather:
     enabled: true

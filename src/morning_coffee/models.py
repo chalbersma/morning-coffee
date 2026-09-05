@@ -22,6 +22,8 @@ class FeedItem:
         timestamp: Optional time associated with the item (used for ordering/display).
         source: Name of the integration that produced this item.
         meta: Free-form extra fields an integration may attach (e.g. emoji, counts).
+        icon: Optional glyph rendered in a leading icon column (e.g. a weather icon).
+        icon_font: Registered Kivy font name the ``icon`` glyph belongs to.
     """
 
     title: str
@@ -30,3 +32,5 @@ class FeedItem:
     timestamp: datetime | None = None
     source: str = ""
     meta: dict = field(default_factory=dict)
+    icon: str | None = None
+    icon_font: str | None = None

@@ -1,8 +1,9 @@
 """Weather integration: a 7-day forecast for a postal code.
 
 No API keys required. Postal code -> lat/lon via zippopotam.us, then a daily
-forecast from Open-Meteo. WMO weather codes are mapped to a description + emoji.
-Each day becomes one ``FeedItem``.
+forecast from Open-Meteo. WMO weather codes are mapped to a description plus a
+"Weather Icons" font glyph (see ``ui/icons.py``). Each day becomes one
+``FeedItem`` carrying that glyph in ``icon``.
 """
 
 from __future__ import annotations
@@ -12,49 +13,63 @@ from datetime import date, datetime
 import httpx
 
 from ..models import FeedItem
+from ..ui.icons import WEATHER_FONT
 from .base import Integration
 
 GEOCODE_URL = "https://api.zippopotam.us/{country}/{postal_code}"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 
-# WMO 4677 weather codes -> (description, emoji). Missing codes fall back below.
+# "Weather Icons" (Erik Flowers, SIL OFL) glyphs, by name -> PUA codepoint.
+# Verified from the font's weather-icons.css.
+_G_SUNNY = ""       # wi-day-sunny
+_G_DAY_CLOUDY = ""  # wi-day-cloudy
+_G_CLOUDY = ""      # wi-cloudy
+_G_FOG = ""         # wi-fog
+_G_RAIN = ""        # wi-rain
+_G_SHOWERS = ""     # wi-showers
+_G_SNOW = ""        # wi-snow
+_G_SLEET = ""       # wi-sleet
+_G_THUNDER = ""     # wi-thunderstorm
+_G_NA = ""          # wi-na
+
+# WMO 4677 weather codes -> (description, glyph). Missing codes fall back below.
 WMO_CODES: dict[int, tuple[str, str]] = {
-    0: ("Clear sky", "☀️"),
-    1: ("Mainly clear", "🌤️"),
-    2: ("Partly cloudy", "⛅"),
-    3: ("Overcast", "☁️"),
-    45: ("Fog", "🌫️"),
-    48: ("Depositing rime fog", "🌫️"),
-    51: ("Light drizzle", "🌦️"),
-    53: ("Moderate drizzle", "🌦️"),
-    55: ("Dense drizzle", "🌦️"),
-    56: ("Freezing drizzle", "🌧️"),
-    57: ("Dense freezing drizzle", "🌧️"),
-    61: ("Slight rain", "🌧️"),
-    63: ("Moderate rain", "🌧️"),
-    65: ("Heavy rain", "🌧️"),
-    66: ("Freezing rain", "🌧️"),
-    67: ("Heavy freezing rain", "🌧️"),
-    71: ("Slight snow", "🌨️"),
-    73: ("Moderate snow", "🌨️"),
-    75: ("Heavy snow", "❄️"),
-    77: ("Snow grains", "🌨️"),
-    80: ("Slight rain showers", "🌦️"),
-    81: ("Moderate rain showers", "🌦️"),
-    82: ("Violent rain showers", "⛈️"),
-    85: ("Slight snow showers", "🌨️"),
-    86: ("Heavy snow showers", "❄️"),
-    95: ("Thunderstorm", "⛈️"),
-    96: ("Thunderstorm with slight hail", "⛈️"),
-    99: ("Thunderstorm with heavy hail", "⛈️"),
+    0: ("Clear sky", _G_SUNNY),
+    1: ("Mainly clear", _G_SUNNY),
+    2: ("Partly cloudy", _G_DAY_CLOUDY),
+    3: ("Overcast", _G_CLOUDY),
+    45: ("Fog", _G_FOG),
+    48: ("Depositing rime fog", _G_FOG),
+    51: ("Light drizzle", _G_SHOWERS),
+    53: ("Moderate drizzle", _G_SHOWERS),
+    55: ("Dense drizzle", _G_SHOWERS),
+    56: ("Freezing drizzle", _G_SLEET),
+    57: ("Dense freezing drizzle", _G_SLEET),
+    61: ("Slight rain", _G_RAIN),
+    63: ("Moderate rain", _G_RAIN),
+    65: ("Heavy rain", _G_RAIN),
+    66: ("Freezing rain", _G_SLEET),
+    67: ("Heavy freezing rain", _G_SLEET),
+    71: ("Slight snow", _G_SNOW),
+    73: ("Moderate snow", _G_SNOW),
+    75: ("Heavy snow", _G_SNOW),
+    77: ("Snow grains", _G_SNOW),
+    80: ("Slight rain showers", _G_SHOWERS),
+    81: ("Moderate rain showers", _G_SHOWERS),
+    82: ("Violent rain showers", _G_THUNDER),
+    85: ("Slight snow showers", _G_SNOW),
+    86: ("Heavy snow showers", _G_SNOW),
+    95: ("Thunderstorm", _G_THUNDER),
+    96: ("Thunderstorm with slight hail", _G_THUNDER),
+    99: ("Thunderstorm with heavy hail", _G_THUNDER),
 }
 
 
 def describe_weather(code: int | None) -> tuple[str, str]:
-    """Map a WMO weather code to (description, emoji), with a default."""
+    """Map a WMO weather code to (description, glyph), with a default."""
     if code is None:
-        return ("Unknown", "❓")
-    return WMO_CODES.get(int(code), ("Unknown", "❓"))
+        return ("Unknown", _G_NA)
+    return WMO_CODES.get(int(code), ("Unknown", _G_NA))
 
 
 class WeatherIntegration(Integration):
@@ -132,11 +147,12 @@ class WeatherIntegration(Integration):
 
             hi = highs[i] if i < len(highs) else None
             lo = lows[i] if i < len(lows) else None
-            desc, emoji = describe_weather(codes[i] if i < len(codes) else None)
+            code = codes[i] if i < len(codes) else None
+            desc, glyph = describe_weather(code)
             pop = pops[i] if i < len(pops) else None
 
             temp = f"{round(hi)}{unit_symbol} / {round(lo)}{unit_symbol}" if hi is not None and lo is not None else ""
-            title = f"{emoji} {day_label}  {temp}".strip()
+            title = f"{day_label}  {temp}".strip()
             subtitle = desc
             if pop is not None:
                 subtitle += f" · {pop}% precip"
@@ -147,7 +163,9 @@ class WeatherIntegration(Integration):
                     subtitle=subtitle,
                     timestamp=ts,
                     source=f"{self.name} ({place})" if i == 0 and place else self.name,
-                    meta={"weather_code": codes[i] if i < len(codes) else None},
+                    meta={"weather_code": code},
+                    icon=glyph,
+                    icon_font=WEATHER_FONT,
                 )
             )
         return items

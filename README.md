@@ -4,8 +4,11 @@ A Test of AI capabilities, want to make a "morning coffee" app that gives me the
 A small [Kivy](https://kivy.org) desktop dashboard, managed with [uv](https://docs.astral.sh/uv/),
 that on launch shows three panels:
 
-- **Top Stories** — recent headlines from your [Tiny Tiny RSS](https://tt-rss.org) instance.
-- **Interactions** — recent Mastodon notifications (mentions, favourites, boosts, follows).
+- **Top Stories** — recent headlines from your [Tiny Tiny RSS](https://tt-rss.org)
+  instance. Mark a story read with its "✓ read" button, or clear the whole feed with
+  "Mark all read"; both write back to the TTRSS server.
+- **Mastodon** — a tabbed panel with your Notifications, Home timeline, Trending
+  posts, and a Compose tab to publish a new post.
 - **Weather** — a 7-day forecast for your location, by postal code (no API key needed).
 
 The app is organized around pluggable **integrations** — adding a new data source
@@ -35,7 +38,10 @@ postal code. Set `enabled: false` on any integration you don't want.
 - **TTRSS**: enable "Enable API access" in TTRSS Preferences. For self-signed
   certificates set `verify_tls: false`.
 - **Mastodon**: create an app in *Preferences → Development*, then copy "Your
-  access token" (scope `read` or `read:notifications`).
+  access token". Reading the Notifications/Home/Trending tabs needs
+  `read:notifications` + `read:statuses` (or `read`); **posting from the Compose
+  tab additionally needs `write:statuses`** (or `write`). Use `show_notifications`
+  / `show_home` / `show_trending` / `show_compose` to choose which tabs appear.
 - **Weather**: just set `location.postal_code` and `location.country` (ISO alpha-2).
 
 ### Secrets via environment variables
@@ -72,3 +78,13 @@ Click a story/interaction to open it in your browser; "Refresh all" re-fetches.
 3. Add a config block for it under `integrations:` in `config.example.yaml`.
 
 No UI changes are needed — the app renders one panel per registered integration.
+
+## Credits
+
+- Weather conditions are drawn with the [Weather Icons](https://github.com/erikflowers/weather-icons)
+  font by Erik Flowers, bundled at `src/morning_coffee/assets/` and licensed under
+  the SIL Open Font License 1.1 (see the accompanying `OFL.txt`).
+- The title's coffee icon is the "mug-hot" glyph from
+  [Font Awesome 6 Free](https://fontawesome.com) (icons under CC BY 4.0),
+  subset to a single glyph and bundled at `src/morning_coffee/assets/coffee.ttf`
+  (see `FONT-AWESOME-LICENSE.txt`).

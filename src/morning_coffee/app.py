@@ -18,6 +18,7 @@ from kivy.uix.label import Label
 
 from .config import Config, ConfigError, load_config
 from .integrations import REGISTRY
+from .ui.icons import COFFEE_GLYPH, ICON_FONT, register_fonts
 from .ui.panel import Panel
 
 Window.clearcolor = (0.96, 0.96, 0.97, 1)
@@ -34,11 +35,12 @@ class MorningCoffeeApp(App):
     def build(self):
         root = BoxLayout(orientation="vertical", padding=dp(8), spacing=dp(8))
 
-        # Top bar: title + refresh button.
+        # Top bar: title + refresh button. The coffee glyph comes from a bundled
+        # icon font (markup [font=...]); the default font can't render the emoji.
         bar = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(8))
         bar.add_widget(
             Label(
-                text="[b]☕ Morning Coffee[/b]",
+                text=f"[b][font={ICON_FONT}]{COFFEE_GLYPH}[/font]  Morning Coffee[/b]",
                 markup=True,
                 font_size="20sp",
                 halign="left",
@@ -58,6 +60,9 @@ class MorningCoffeeApp(App):
             if not integration.enabled:
                 continue
             panel = Panel(integration)
+            # Give multi-tab panels (e.g. Mastodon) a bit more horizontal room.
+            if len(integration.tabs()) > 1:
+                panel.size_hint_x = 1.5
             self._panels.append(panel)
             panels_row.add_widget(panel)
 
@@ -87,6 +92,7 @@ def main() -> int:
     except ConfigError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 1
+    register_fonts()  # register icon fonts before any Label is built
     MorningCoffeeApp(config).run()
     return 0
 
