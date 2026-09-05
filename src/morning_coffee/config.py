@@ -71,11 +71,14 @@ def _coerce_like(value: str, template):
     return value
 
 
-def _apply_env_overrides(section_name: str, section: dict) -> None:
+def apply_env_overrides(section_name: str, section: dict) -> None:
     """Override keys in ``section`` from ``MC_<SECTION_NAME>_<KEY>`` env vars.
 
     Mutates ``section`` in place. Env values are coerced to match the type of
     the existing YAML value when one is present; otherwise they stay strings.
+
+    Public so composite integrations can apply overrides to nested settings
+    (e.g. News applies ``MC_NEWS_TTRSS_*`` to its per-source dicts).
     """
     prefix = f"{ENV_PREFIX}{section_name.upper()}_"
     for env_key, env_val in os.environ.items():
@@ -86,6 +89,10 @@ def _apply_env_overrides(section_name: str, section: dict) -> None:
             section[key] = _coerce_like(env_val, section[key])
         else:
             section[key] = env_val
+
+
+# Backwards-compatible private alias.
+_apply_env_overrides = apply_env_overrides
 
 
 def load_config(path: str | os.PathLike | None = None) -> Config:

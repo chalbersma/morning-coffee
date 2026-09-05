@@ -25,9 +25,11 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
+from kivy.utils import escape_markup
 
 from ..integrations.base import ComposeTab, FeedTab, Integration
 from ..models import FeedItem
+from .icons import CARET_DOWN_GLYPH, CARET_UP_GLYPH, ICON_FONT
 
 
 class ItemRow(BoxLayout):
@@ -36,7 +38,8 @@ class ItemRow(BoxLayout):
     ``on_action`` is called with this row when its action button is pressed.
     """
 
-    def __init__(self, item: FeedItem, action=None, on_action=None, **kwargs):
+    def __init__(self, item: FeedItem, action=None, on_action=None,
+                 vote_action=None, on_vote_error=None, **kwargs):
         super().__init__(
             orientation="horizontal",
             size_hint_y=None,
@@ -47,6 +50,11 @@ class ItemRow(BoxLayout):
         self.item = item
         self._on_action = on_action
         self.action_btn: Button | None = None
+        self._subtitle: Label | None = None
+        self._sub_links: dict[str, str] = {}
+        self._vote_action = vote_action
+        self._on_vote_error = on_vote_error
+        self._vote_control = None
 
         # Optional leading icon (e.g. a weather glyph from a registered icon font).
         if item.icon:
@@ -78,8 +86,31 @@ class ItemRow(BoxLayout):
         title.bind(texture_size=lambda w, ts: setattr(w, "height", ts[1]))
         text_col.add_widget(title)
 
-        if item.subtitle:
-            subtitle = Label(
+        if item.subtitle_segments:
+            # Render segments; those with a url become clickable [ref] links.
+            parts = []
+            for i, (text, url) in enumerate(item.subtitle_segments):
+                safe = escape_markup(text)
+                if url:
+                    ref = str(i)
+                    self._sub_links[ref] = url
+                    parts.append(f"[ref={ref}][color=3b6ea5]{safe}[/color][/ref]")
+                else:
+                    parts.append(safe)
+            self._subtitle = Label(
+                text="".join(parts),
+                markup=True,
+                halign="left",
+                valign="top",
+                size_hint_y=None,
+                font_size="12sp",
+                color=(0.4, 0.4, 0.45, 1),
+            )
+            self._subtitle.bind(on_ref_press=self._on_ref_press)
+            self._subtitle.bind(size=lambda w, *_: setattr(w, "text_size", (w.width, None)))
+            self._subtitle.bind(texture_size=lambda w, ts: setattr(w, "height", ts[1]))
+        elif item.subtitle:
+            self._subtitle = Label(
                 text=item.subtitle,
                 halign="left",
                 valign="top",
@@ -87,9 +118,23 @@ class ItemRow(BoxLayout):
                 font_size="12sp",
                 color=(0.4, 0.4, 0.45, 1),
             )
-            subtitle.bind(size=lambda w, *_: setattr(w, "text_size", (w.width, None)))
-            subtitle.bind(texture_size=lambda w, ts: setattr(w, "height", ts[1]))
-            text_col.add_widget(subtitle)
+            self._subtitle.bind(size=lambda w, *_: setattr(w, "text_size", (w.width, None)))
+            self._subtitle.bind(texture_size=lambda w, ts: setattr(w, "height", ts[1]))
+
+        # Second line: subtitle on the left, optional vote control inline on the
+        # right. Keeping the control here (rather than a full-height right column)
+        # lets the title use the full row width instead of wrapping.
+        control = self._build_vote_control() if vote_action else None
+        if self._subtitle and control:
+            line2 = BoxLayout(orientation="horizontal", size_hint_y=None, spacing=dp(6))
+            line2.add_widget(self._subtitle)
+            line2.add_widget(control)
+            line2.bind(minimum_height=line2.setter("height"))
+            text_col.add_widget(line2)
+        elif self._subtitle:
+            text_col.add_widget(self._subtitle)
+        elif control:
+            text_col.add_widget(control)
 
         text_col.bind(minimum_height=text_col.setter("height"))
         self._text_col = text_col
@@ -130,12 +175,96 @@ class ItemRow(BoxLayout):
         if item.url:
             self.bind(on_touch_down=self._maybe_open)
 
+    # --- vote control --------------------------------------------------------
+
+    _NEUTRAL = (0.5, 0.5, 0.55, 1)
+    _UP = (0.85, 0.45, 0.1, 1)     # orange when upvoted
+    _DOWN = (0.3, 0.45, 0.8, 1)    # blue when downvoted
+
+    def _build_vote_control(self) -> BoxLayout:
+        """Build the inline ( ▲ score ▼ ) control and return it."""
+        self._score = int(self.item.meta.get("score") or 0)
+        self._my_vote = int(self.item.meta.get("my_vote") or 0)
+
+        control = BoxLayout(
+            orientation="horizontal", size_hint=(None, None), width=dp(92), height=dp(20)
+        )
+        self._up_btn = Button(
+            text=CARET_UP_GLYPH, font_name=ICON_FONT, font_size="15sp",
+            size_hint_x=None, width=dp(24), background_color=(0, 0, 0, 0),
+        )
+        self._up_btn.bind(on_release=lambda _b: self._do_vote(1))
+        self._score_lbl = Label(
+            text=str(self._score), font_size="12sp", size_hint_x=None, width=dp(44),
+            halign="center", valign="middle", color=self._NEUTRAL,
+        )
+        self._score_lbl.bind(size=lambda w, *_: setattr(w, "text_size", w.size))
+        self._down_btn = Button(
+            text=CARET_DOWN_GLYPH, font_name=ICON_FONT, font_size="15sp",
+            size_hint_x=None, width=dp(24), background_color=(0, 0, 0, 0),
+        )
+        self._down_btn.bind(on_release=lambda _b: self._do_vote(-1))
+        control.add_widget(self._up_btn)
+        control.add_widget(self._score_lbl)
+        control.add_widget(self._down_btn)
+        self._vote_control = control
+        self._render_vote()
+        return control
+
+    def _render_vote(self) -> None:
+        self._score_lbl.text = str(self._score)
+        self._up_btn.color = self._UP if self._my_vote == 1 else self._NEUTRAL
+        self._down_btn.color = self._DOWN if self._my_vote == -1 else self._NEUTRAL
+
+    def _do_vote(self, direction: int) -> None:
+        if not self._vote_action:
+            return
+        # Clicking the active arrow again clears the vote (target 0).
+        target = 0 if self._my_vote == direction else direction
+        self._up_btn.disabled = True
+        self._down_btn.disabled = True
+        threading.Thread(target=self._vote_worker, args=(target,), daemon=True).start()
+
+    def _vote_worker(self, target: int) -> None:
+        try:
+            new_score, new_my_vote = self._vote_action.vote(self.item, target)
+            error = None
+        except Exception as exc:  # noqa: BLE001 - report failure in the view
+            new_score, new_my_vote, error = None, None, str(exc)
+        Clock.schedule_once(
+            lambda _dt: self._vote_done(new_score, new_my_vote, error), 0
+        )
+
+    def _vote_done(self, new_score, new_my_vote, error) -> None:
+        self._up_btn.disabled = False
+        self._down_btn.disabled = False
+        if error:
+            if self._on_vote_error:
+                self._on_vote_error(error)
+            return
+        self._score = int(new_score)
+        self._my_vote = int(new_my_vote)
+        self.item.meta["score"] = self._score
+        self.item.meta["my_vote"] = self._my_vote
+        self._render_vote()
+
     def _sync_height(self, *_args) -> None:
         self.height = max(self._text_col.height, dp(34))
 
+    def _on_ref_press(self, _label, ref):
+        url = self._sub_links.get(ref)
+        if url:
+            webbrowser.open(url)
+
     def _maybe_open(self, _widget, touch):
-        # Don't open the URL when the tap lands on the action button.
+        # Don't open the article when the tap lands on the action button.
         if self.action_btn and self.action_btn.collide_point(*touch.pos):
+            return False
+        # Or on the subtitle when it carries its own links (Label handles those).
+        if self._sub_links and self._subtitle and self._subtitle.collide_point(*touch.pos):
+            return False
+        # Or on the vote control (its buttons handle their own presses).
+        if self._vote_control and self._vote_control.collide_point(*touch.pos):
             return False
         if self.collide_point(*touch.pos) and self.item.url:
             webbrowser.open(self.item.url)
@@ -155,6 +284,8 @@ class FeedView(BoxLayout):
         self._fetch = tab.fetch
         self._item_action = tab.item_action
         self._bulk_action = tab.bulk_action
+        self._selector = tab.selector
+        self._vote_action = tab.vote_action
         self._count = 0
 
         self.status = Label(
@@ -166,22 +297,39 @@ class FeedView(BoxLayout):
             color=(0.5, 0.5, 0.55, 1),
         )
         self.status.bind(size=lambda w, *_: setattr(w, "text_size", (w.width, None)))
+        self.bulk_btn = None
 
-        if self._bulk_action:
-            # Status label + bulk button share one row.
+        if self._selector or self._bulk_action:
+            # A control row: [selector] status [bulk button].
             top = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30), spacing=dp(6))
+            if self._selector:
+                self._label_by_value = {v: lbl for lbl, v in self._selector.options}
+                self._value_by_label = {lbl: v for lbl, v in self._selector.options}
+                default_label = self._label_by_value.get(
+                    self._selector.default,
+                    self._selector.options[0][0] if self._selector.options else "",
+                )
+                spinner = Spinner(
+                    text=default_label,
+                    values=[lbl for lbl, _v in self._selector.options],
+                    size_hint_x=None,
+                    width=dp(130),
+                    font_size="12sp",
+                )
+                spinner.bind(text=self._on_select)
+                top.add_widget(spinner)
             top.add_widget(self.status)
-            self.bulk_btn = Button(
-                text=self._bulk_action.label,
-                size_hint_x=None,
-                width=dp(120),
-                font_size="12sp",
-            )
-            self.bulk_btn.bind(on_release=lambda _b: self._on_bulk())
-            top.add_widget(self.bulk_btn)
+            if self._bulk_action:
+                self.bulk_btn = Button(
+                    text=self._bulk_action.label,
+                    size_hint_x=None,
+                    width=dp(120),
+                    font_size="12sp",
+                )
+                self.bulk_btn.bind(on_release=lambda _b: self._on_bulk())
+                top.add_widget(self.bulk_btn)
             self.add_widget(top)
         else:
-            self.bulk_btn = None
             self.add_widget(self.status)
 
         self.scroll = ScrollView()
@@ -194,6 +342,14 @@ class FeedView(BoxLayout):
         self.list.bind(minimum_height=self.list.setter("height"))
         self.scroll.add_widget(self.list)
         self.add_widget(self.scroll)
+
+    def _on_select(self, _spinner, label: str) -> None:
+        """Selector changed: tell the source, then re-fetch."""
+        if not self._selector:
+            return
+        value = self._value_by_label.get(label, label)
+        self._selector.on_select(value)
+        self.refresh()
 
     def refresh(self) -> None:
         """Kick off a background fetch."""
@@ -224,8 +380,18 @@ class FeedView(BoxLayout):
         self._update_count()
         for item in items:
             self.list.add_widget(
-                ItemRow(item, action=self._item_action, on_action=self._do_item_action)
+                ItemRow(
+                    item,
+                    action=self._item_action,
+                    on_action=self._do_item_action,
+                    vote_action=self._vote_action,
+                    on_vote_error=self._vote_error,
+                )
             )
+
+    def _vote_error(self, msg: str) -> None:
+        self.status.text = f"[error] {msg}"
+        self.status.color = (0.7, 0.2, 0.2, 1)
 
     def _update_count(self) -> None:
         self.status.text = f"{self._count} item(s)"

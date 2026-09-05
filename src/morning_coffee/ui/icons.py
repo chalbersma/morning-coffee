@@ -22,6 +22,8 @@ ICON_FONT = "iconfont"
 # Font Awesome 6 Free Solid glyphs (in the bundled icons.ttf subset).
 COFFEE_GLYPH = "\uf7b6"  # mug-hot
 CHECK_GLYPH = "\uf00c"  # check
+CARET_UP_GLYPH = "\uf0d8"  # caret-up (upvote)
+CARET_DOWN_GLYPH = "\uf0d7"  # caret-down (downvote)
 
 # name -> bundled ttf, all under this package's assets/ dir.
 _FONT_FILES = {

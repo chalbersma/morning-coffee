@@ -8,12 +8,15 @@ its class here (and add a matching block to ``config.example.yaml``).
 from __future__ import annotations
 
 from .base import Integration
+from .lemmy import LemmyIntegration
 from .mastodon import MastodonIntegration
+from .news import NewsIntegration
 from .ttrss import TtrssIntegration
 from .weather import WeatherIntegration
 
+# Top-level panels. TTRSS/Lemmy are not here: they are News sources (see news.py).
 REGISTRY: list[type[Integration]] = [
-    TtrssIntegration,
+    NewsIntegration,
     MastodonIntegration,
     WeatherIntegration,
 ]
@@ -21,7 +24,9 @@ REGISTRY: list[type[Integration]] = [
 __all__ = [
     "Integration",
     "REGISTRY",
+    "NewsIntegration",
     "TtrssIntegration",
+    "LemmyIntegration",
     "MastodonIntegration",
     "WeatherIntegration",
 ]

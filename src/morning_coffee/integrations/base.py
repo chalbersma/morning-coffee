@@ -52,6 +52,33 @@ class BulkAction:
 
 
 @dataclass
+class VoteAction:
+    """Up/down voting on each item row (e.g. Lemmy posts).
+
+    Attributes:
+        vote: Callable ``(item, target_score) -> (new_score, new_my_vote)`` where
+            target_score is 1 (up), -1 (down) or 0 (clear). Raises on error.
+    """
+
+    vote: Callable[[FeedItem, int], tuple[int, int]]
+
+
+@dataclass
+class FeedSelector:
+    """A dropdown shown at the top of a feed to switch what it lists.
+
+    Attributes:
+        options: (label, value) choices shown in the dropdown.
+        on_select: Called with the chosen value before the feed re-fetches.
+        default: The value selected initially.
+    """
+
+    options: list[tuple[str, str]]
+    on_select: Callable[[str], None]
+    default: str
+
+
+@dataclass
 class FeedTab:
     """A tab that shows a scrollable list of items.
 
@@ -60,6 +87,8 @@ class FeedTab:
         fetch: Callable returning items newest-first; raises on error.
         item_action: Optional per-item action rendered as a button on each row.
         bulk_action: Optional feed-wide action rendered next to the status line.
+        selector: Optional dropdown that switches what the feed lists, then refetches.
+        vote_action: Optional up/down vote control rendered on each row.
         default: If True, this tab is the one shown first when the panel opens.
     """
 
@@ -67,6 +96,8 @@ class FeedTab:
     fetch: Callable[[], list[FeedItem]]
     item_action: ItemAction | None = None
     bulk_action: BulkAction | None = None
+    selector: FeedSelector | None = None
+    vote_action: VoteAction | None = None
     default: bool = False
 
 

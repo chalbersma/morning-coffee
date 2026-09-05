@@ -24,6 +24,10 @@ class FeedItem:
         meta: Free-form extra fields an integration may attach (e.g. emoji, counts).
         icon: Optional glyph rendered in a leading icon column (e.g. a weather icon).
         icon_font: Registered Kivy font name the ``icon`` glyph belongs to.
+        subtitle_segments: Optional list of ``(text, url_or_None)`` parts; when set,
+            the subtitle renders these instead of the plain ``subtitle`` string, and
+            any segment with a non-None url becomes a clickable link. ``subtitle``
+            remains the plain-text fallback.
     """
 
     title: str
@@ -34,3 +38,4 @@ class FeedItem:
     meta: dict = field(default_factory=dict)
     icon: str | None = None
     icon_font: str | None = None
+    subtitle_segments: list[tuple[str, str | None]] | None = None
