@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 
 from ..models import FeedItem
-from .base import ComposeTab, FeedTab, Integration, Tab
+from .base import ComposeTab, Field, FeedTab, Integration, Tab
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
@@ -98,6 +98,24 @@ def _status_to_item(status: dict, source: str, home_base: str) -> FeedItem:
 class MastodonIntegration(Integration):
     name = "Mastodon"
     config_key = "mastodon"
+
+    @classmethod
+    def config_fields(cls) -> list[Field]:
+        return [
+            Field("api_base_url", "Instance URL", help="e.g. https://mastodon.social"),
+            Field("access_token", "Access token", kind="secret",
+                  help="Preferences -> Development; needs write:statuses to post"),
+            Field("notifications_limit", "Notifications limit", kind="int"),
+            Field("home_limit", "Home limit", kind="int"),
+            Field("trending_limit", "Trending limit", kind="int"),
+            Field("default_visibility", "Default visibility", kind="choice",
+                  choices=["public", "unlisted", "private", "direct"]),
+            Field("max_characters", "Max characters", kind="int"),
+            Field("show_notifications", "Show Notifications tab", kind="bool"),
+            Field("show_home", "Show Home tab", kind="bool"),
+            Field("show_trending", "Show Trending tab", kind="bool"),
+            Field("show_compose", "Show Compose tab", kind="bool"),
+        ]
 
     def _home_base(self) -> str:
         """The configured home server base URL, without a trailing slash."""

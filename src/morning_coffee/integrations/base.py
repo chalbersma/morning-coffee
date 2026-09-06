@@ -127,6 +127,25 @@ class ComposeTab:
 Tab = FeedTab | ComposeTab
 
 
+@dataclass
+class Field:
+    """A single editable setting, described for the settings screen.
+
+    Attributes:
+        key: The settings key under the integration's config block.
+        label: Human-readable label shown in the form.
+        kind: One of "text", "int", "bool", "secret", "choice".
+        choices: Allowed values when ``kind == "choice"``.
+        help: Optional hint shown near the field.
+    """
+
+    key: str
+    label: str
+    kind: str = "text"
+    choices: list[str] | None = None
+    help: str = ""
+
+
 class Integration(ABC):
     """Base class for a dashboard data source.
 
@@ -137,6 +156,14 @@ class Integration(ABC):
 
     name: str = "Integration"
     config_key: str = ""
+
+    @classmethod
+    def config_fields(cls) -> list[Field]:
+        """Editable settings for this integration (for the settings screen).
+
+        Default: none. Integrations override to expose their fields.
+        """
+        return []
 
     def __init__(self, settings: dict) -> None:
         """Store this integration's slice of config.

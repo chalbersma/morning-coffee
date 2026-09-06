@@ -10,13 +10,13 @@ from __future__ import annotations
 from .base import Integration
 from .lemmy import LemmyIntegration
 from .mastodon import MastodonIntegration
-from .news import NewsIntegration
 from .ttrss import TtrssIntegration
 from .weather import WeatherIntegration
 
-# Top-level panels. TTRSS/Lemmy are not here: they are News sources (see news.py).
+# Top-level panels, in carousel order.
 REGISTRY: list[type[Integration]] = [
-    NewsIntegration,
+    TtrssIntegration,
+    LemmyIntegration,
     MastodonIntegration,
     WeatherIntegration,
 ]
@@ -24,7 +24,6 @@ REGISTRY: list[type[Integration]] = [
 __all__ = [
     "Integration",
     "REGISTRY",
-    "NewsIntegration",
     "TtrssIntegration",
     "LemmyIntegration",
     "MastodonIntegration",

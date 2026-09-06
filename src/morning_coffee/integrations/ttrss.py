@@ -15,12 +15,23 @@ import httpx
 
 from ..models import FeedItem
 from ..ui.icons import CHECK_GLYPH, ICON_FONT
-from .base import BulkAction, FeedTab, Integration, ItemAction, Tab
+from .base import BulkAction, Field, FeedTab, Integration, ItemAction, Tab
 
 
 class TtrssIntegration(Integration):
-    name = "Top Stories"
+    name = "RSS Feeds"
     config_key = "ttrss"
+
+    @classmethod
+    def config_fields(cls) -> list[Field]:
+        return [
+            Field("url", "Server URL", help="e.g. https://rss.example.com/tt-rss/"),
+            Field("username", "Username"),
+            Field("password", "Password", kind="secret"),
+            Field("feed_id", "Feed ID", kind="int", help="-3 = Fresh, -4 = All"),
+            Field("limit", "Item limit", kind="int"),
+            Field("verify_tls", "Verify TLS", kind="bool"),
+        ]
 
     def _api_url(self) -> str:
         base = str(self.settings.get("url", "")).rstrip("/")

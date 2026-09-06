@@ -14,7 +14,7 @@ import httpx
 
 from ..models import FeedItem
 from ..ui.icons import WEATHER_FONT
-from .base import Integration
+from .base import Field, Integration
 
 GEOCODE_URL = "https://api.zippopotam.us/{country}/{postal_code}"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -75,6 +75,12 @@ def describe_weather(code: int | None) -> tuple[str, str]:
 class WeatherIntegration(Integration):
     name = "Weather"
     config_key = "weather"
+
+    @classmethod
+    def config_fields(cls) -> list[Field]:
+        return [
+            Field("forecast_days", "Forecast days", kind="int", help="1-16"),
+        ]
 
     def _location(self) -> dict:
         # Location may be nested (merged by Config) or flattened into settings.

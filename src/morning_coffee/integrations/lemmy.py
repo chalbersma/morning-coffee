@@ -14,7 +14,7 @@ from datetime import datetime
 import httpx
 
 from ..models import FeedItem
-from .base import FeedSelector, FeedTab, Integration, Tab, VoteAction
+from .base import Field, FeedSelector, FeedTab, Integration, Tab, VoteAction
 
 USER_AGENT = "morning-coffee/0.1 (+https://github.com/chalbersma/morning-coffee)"
 
@@ -40,6 +40,24 @@ def _parse_published(value) -> datetime | None:
 class LemmyIntegration(Integration):
     name = "Lemmy"
     config_key = "lemmy"
+
+    @classmethod
+    def config_fields(cls) -> list[Field]:
+        return [
+            Field("instance", "Instance", help="host only, e.g. lemmy.world"),
+            Field(
+                "sort", "Sort",
+                kind="choice",
+                choices=["TopDay", "Hot", "New", "TopHour", "TopWeek", "TopMonth"],
+            ),
+            Field(
+                "type_", "Default listing",
+                kind="choice", choices=["Subscribed", "Local", "All"],
+            ),
+            Field("limit", "Item limit", kind="int"),
+            Field("username", "Username", help="optional; enables Subscribed + voting"),
+            Field("password", "Password", kind="secret"),
+        ]
 
     def __init__(self, settings: dict) -> None:
         super().__init__(settings)

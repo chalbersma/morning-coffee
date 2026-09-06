@@ -1,17 +1,22 @@
-# morning-coffee configuration.
+# morning-coffee configuration — SEED TEMPLATE.
 #
-# Copy this file to `config.yaml` (which is gitignored) and fill in your values:
-#     cp config.example.yaml config.yaml
+# On first run the app copies this file to a per-user, cross-platform location
+# and reads/writes it there (edit it in-app via the ⚙ settings screen):
+#     macOS:   ~/Library/Application Support/morningcoffee/config.yaml
+#     Linux:   ~/.config/morningcoffee/config.yaml
+#     Windows: %APPDATA%\morningcoffee\config.yaml
+# For local development you may also keep a `config.yaml` beside this file, or
+# point $MORNING_COFFEE_CONFIG at an explicit path.
 #
 # Any value can be overridden by an environment variable named
 # MC_<SECTION>_<KEY> (uppercased). The environment always wins over the YAML
 # value, so you can keep structured settings here and inject secrets from your
 # shell / .envrc. Examples:
 #     export MC_MASTODON_ACCESS_TOKEN=abc123
-#     export MC_NEWS_TTRSS_PASSWORD=hunter2   # nested: news.sources.ttrss.password
+#     export MC_TTRSS_PASSWORD=hunter2
 # Sections map to the top-level keys below; for integrations the section is the
-# integration name (e.g. MC_MASTODON_*, MC_WEATHER_*, MC_LOCATION_*). News sources
-# nest one level deeper: MC_NEWS_<SOURCE>_<KEY> (e.g. MC_NEWS_TTRSS_PASSWORD).
+# integration name (e.g. MC_TTRSS_*, MC_LEMMY_*, MC_MASTODON_*, MC_WEATHER_*,
+# MC_LOCATION_*).
 
 location:
   postal_code: "94103"
@@ -19,36 +24,30 @@ location:
   units: "fahrenheit"    # or "celsius"
 
 integrations:
-  # The News panel aggregates multiple sources; switch between them with the
-  # tab row. Each source has a `type` (ttrss | lemmy) and its own settings.
-  # Nested secrets use MC_NEWS_<SOURCE>_<KEY>, e.g. MC_NEWS_TTRSS_PASSWORD.
-  news:
+  # Each integration is its own panel; navigate between them with the ‹ / ›
+  # arrows (or swipe).
+  ttrss:
     enabled: true
-    default_source: ttrss   # which source tab opens first
-    sources:
-      ttrss:
-        type: ttrss
-        title: TTRSS
-        url: "https://rss.example.com/tt-rss/"   # "/api/" is appended automatically
-        username: "me"
-        password: ""        # secret — better set via MC_NEWS_TTRSS_PASSWORD
-        feed_id: -3         # -3 = Fresh (top of the day); -4 = All articles
-        limit: 25
-        verify_tls: true    # set false for self-signed instances
-      lemmy:
-        type: lemmy
-        title: Lemmy
-        instance: "lemmy.world"   # host only, no scheme / trailing slash
-        sort: "TopDay"            # TopDay | Hot | New | TopWeek | TopHour | ...
-        # Default listing type; switch it in-app via the dropdown at the top of
-        # the Lemmy feed. Subscribed needs login (see username/password below).
-        type_: "Subscribed"      # Subscribed | Local | All
-        limit: 25
-        # Optional login. Leave blank for anonymous read-only access. Logging in
-        # enables type_: Subscribed and your read/vote state.
-        username: ""             # username or email
-        password: ""             # secret — better set via MC_NEWS_LEMMY_PASSWORD
-        # totp_2fa_token: ""     # only if your account uses TOTP 2FA
+    url: "https://rss.example.com/tt-rss/"   # "/api/" is appended automatically
+    username: "me"
+    password: ""          # secret — better set via MC_TTRSS_PASSWORD
+    feed_id: -3           # -3 = Fresh (top of the day); -4 = All articles
+    limit: 25
+    verify_tls: true      # set false for self-signed instances
+
+  lemmy:
+    enabled: true
+    instance: "lemmy.world"   # host only, no scheme / trailing slash
+    sort: "TopDay"            # TopDay | Hot | New | TopWeek | TopHour | ...
+    # Default listing type; switch it in-app via the dropdown at the top of the
+    # Lemmy feed. Subscribed needs login (see username/password below).
+    type_: "Subscribed"      # Subscribed | Local | All
+    limit: 25
+    # Optional login. Leave blank for anonymous read-only access. Logging in
+    # enables type_: Subscribed, your read/vote state, and up/down voting.
+    username: ""             # username or email
+    password: ""             # secret — better set via MC_LEMMY_PASSWORD
+    # totp_2fa_token: ""     # only if your account uses TOTP 2FA
 
   mastodon:
     enabled: true

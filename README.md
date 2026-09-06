@@ -1,14 +1,16 @@
 # morning-coffee
 A Test of AI capabilities, want to make a "morning coffee" app that gives me the info I want to start the day.
 
-A small [Kivy](https://kivy.org) desktop dashboard, managed with [uv](https://docs.astral.sh/uv/),
-that on launch shows three panels:
+A small [Kivy](https://kivy.org) desktop dashboard, managed with [uv](https://docs.astral.sh/uv/).
+It shows **one panel at a time**; navigate between them with the ‹ / › arrows in the
+top bar or by swiping (the dots show your position). The panels:
 
-- **News** — a tabbed panel that aggregates news sources; switch between them with
-  the tab row. Built-in sources: [Tiny Tiny RSS](https://tt-rss.org) (mark a story
-  read with its checkmark button or clear the feed with "Mark all read", both writing
-  back to the server) and [Lemmy](https://join-lemmy.org) (anonymous top-of-day posts,
-  no login needed).
+- **Top Stories** — headlines from your [Tiny Tiny RSS](https://tt-rss.org) instance;
+  mark a story read with its checkmark button or clear the feed with "Mark all read"
+  (both write back to the server).
+- **Lemmy** — top posts from a [Lemmy](https://join-lemmy.org) instance (anonymous, or
+  logged in). Switch between Subscribed / Local / All, follow the comments link, and —
+  when logged in — up/downvote with the ▲/▼ control.
 - **Mastodon** — a tabbed panel with your Notifications, Home timeline, Trending
   posts, and a Compose tab to publish a new post.
 - **Weather** — a 7-day forecast for your location, by postal code (no API key needed).
@@ -28,27 +30,32 @@ This creates `.venv/`, writes `uv.lock`, and installs dependencies.
 
 ## Configuration
 
-Copy the template and edit it (`config.yaml` is gitignored):
+Edit settings **in the app** via the **⚙ button** in the top bar: it shows a form for
+Location and every integration (URLs, instances, limits, toggles, credentials), and
+Save writes the config to disk and reloads the panels.
 
-```bash
-cp config.example.yaml config.yaml
-```
+Config is stored per-user in a cross-platform location, seeded from
+`config.example.yaml` on first run:
 
-Fill in your News sources, Mastodon instance + access token, and your postal code.
-Set `enabled: false` on any integration you don't want.
+- macOS: `~/Library/Application Support/morningcoffee/config.yaml`
+- Linux: `~/.config/morningcoffee/config.yaml`
+- Windows: `%APPDATA%\morningcoffee\config.yaml`
 
-- **News**: configure sources under `news.sources`; `default_source` picks which
-  tab opens first.
-  - **TTRSS** source: enable "Enable API access" in TTRSS Preferences. For
-    self-signed certificates set `verify_tls: false`.
-  - **Lemmy** source: set `instance` (host only) and `sort` (`TopDay`, `Hot`, …);
-    anonymous by default. Optionally set `username`/`password` to log in, which
-    enables `Subscribed` and your read/vote state (password can come from
-    `MC_NEWS_LEMMY_PASSWORD`). A dropdown at the top of the Lemmy feed switches
-    between **Subscribed / Local / All**, and each post's "N comments" count is a
-    link to its comment thread on your instance. When logged in, each post shows a
-    ▲/score/▼ control to up/downvote (score updates live; click your active arrow
-    again to clear the vote).
+You can still edit that YAML by hand, keep a `config.yaml` beside the example for local
+dev, or point `$MORNING_COFFEE_CONFIG` at an explicit path. Set `enabled: false` (or the
+Enabled toggle) on any integration you don't want.
+
+Notes per integration:
+
+- **TTRSS**: enable "Enable API access" in TTRSS Preferences. For self-signed
+  certificates set `verify_tls: false`.
+- **Lemmy**: set `instance` (host only) and `sort` (`TopDay`, `Hot`, …); anonymous by
+  default. Optionally set `username`/`password` to log in, which enables `Subscribed`
+  and your read/vote state (password can come from `MC_LEMMY_PASSWORD`). A dropdown at
+  the top of the feed switches between **Subscribed / Local / All**, each post's
+  "N comments" count links to its comment thread, and when logged in each post shows a
+  ▲/score/▼ control to up/downvote (score updates live; click your active arrow again
+  to clear the vote).
 - **Mastodon**: create an app in *Preferences → Development*, then copy "Your
   access token". Reading the Notifications/Home/Trending tabs needs
   `read:notifications` + `read:statuses` (or `read`); **posting from the Compose
@@ -56,21 +63,24 @@ Set `enabled: false` on any integration you don't want.
   / `show_home` / `show_trending` / `show_compose` to choose which tabs appear.
 - **Weather**: just set `location.postal_code` and `location.country` (ISO alpha-2).
 
-### Secrets via environment variables
+### Secrets
 
-Any config value can be overridden by an environment variable named
-`MC_<SECTION>_<KEY>` (uppercased), and the environment **always wins**. This lets
-you keep structured settings in `config.yaml` while keeping secrets out of the
-file — e.g. export them from your `.envrc` (also gitignored):
+Secrets (passwords, tokens) are saved in the config file as **plain text** — the file
+lives in your per-user directory above. The settings screen masks them and only writes
+a secret when you type a new value (blank leaves the stored one untouched).
+
+Alternatively, any config value can be overridden by an environment variable named
+`MC_<SECTION>_<KEY>` (uppercased), and the environment **always wins** — so you can keep
+secrets out of the file entirely by exporting them from your `.envrc`:
 
 ```bash
 export MC_MASTODON_ACCESS_TOKEN=abc123
-export MC_NEWS_TTRSS_PASSWORD=hunter2   # nested: news.sources.ttrss.password
+export MC_TTRSS_PASSWORD=hunter2
+export MC_LEMMY_PASSWORD=hunter2
 ```
 
-Section names map to the config: `location` → `MC_LOCATION_*`, and each
-integration by name → `MC_MASTODON_*`, `MC_WEATHER_*`. News sources nest one level
-deeper as `MC_NEWS_<SOURCE>_<KEY>` (e.g. `MC_NEWS_TTRSS_PASSWORD`).
+Section names map to the config: `location` → `MC_LOCATION_*`, and each integration
+by name → `MC_TTRSS_*`, `MC_LEMMY_*`, `MC_MASTODON_*`, `MC_WEATHER_*`.
 
 ## Run
 
@@ -78,9 +88,11 @@ deeper as `MC_NEWS_<SOURCE>_<KEY>` (e.g. `MC_NEWS_TTRSS_PASSWORD`).
 uv run morning-coffee
 ```
 
-A window opens with one panel per enabled integration. Weather populates with no
-credentials; TTRSS/Mastodon show a clear message in-panel if not yet configured.
-Click a story/interaction to open it in your browser; "Refresh all" re-fetches.
+A window opens showing one panel at a time; use the ‹ / › arrows or swipe to move
+between them (the dots show your position, and it wraps around). Weather populates
+with no credentials; TTRSS/Mastodon show a clear message in-panel if not yet
+configured. Click a story/interaction to open it in your browser; "Refresh all"
+re-fetches every panel; ⚙ opens the settings screen.
 
 ## Adding an integration
 

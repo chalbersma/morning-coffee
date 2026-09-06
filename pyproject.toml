@@ -10,6 +10,7 @@ dependencies = [
     "httpx>=0.27",
     "Mastodon.py>=2.2.2",
     "PyYAML>=6.0",
+    "platformdirs>=4.0",
 ]
 
 [project.scripts]
